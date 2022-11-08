@@ -1,0 +1,10 @@
+LICENSE.txt
+README.md
+pyproject.toml
+setup.cfg
+src/DynamicNestedField/DynamicNestedField.py
+src/DynamicNestedField/__init__.py
+src/DynamicNestedField.egg-info/PKG-INFO
+src/DynamicNestedField.egg-info/SOURCES.txt
+src/DynamicNestedField.egg-info/dependency_links.txt
+src/DynamicNestedField.egg-info/top_level.txt
