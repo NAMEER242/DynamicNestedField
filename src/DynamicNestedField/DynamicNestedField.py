@@ -40,7 +40,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                 "create_new_instance": True,  # default: True
                 "can_be_edited": True,  # default: True
                 "clear_data": False,  # default: False
-                "filter": None,  # default: None
+                "filter": [None],  # default: None
                 "serializer": None  # default: None
             }
         }
@@ -68,7 +68,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                 if attr in info.relations and info.relations[attr].to_many and config["serializer"] is not None:
                     for i, v in enumerate(value):
                         res = None
-                        request_contains_filter = config["filter"] in v if isinstance(v, dict) else False
+                        request_contains_filter = config["filter"][0] in v if isinstance(v, dict) else False
                         request_contains_id = "id" in v if isinstance(v, dict) else False
                         if isinstance(config["serializer"](), DynamicNestedMixin):  # DNM Serializer
                             # ids.
@@ -94,7 +94,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                 # attribute is ForeignKey:
                 elif attr in info.relations and info.relations[attr].to_field is not None and config["serializer"]:
                     res = None
-                    request_contains_filter = config["filter"] in value if isinstance(value, dict) else False
+                    request_contains_filter = config["filter"][0] in value if isinstance(value, dict) else False
                     request_contains_id = "id" in value if isinstance(value, dict) else False
                     if isinstance(config["serializer"](), DynamicNestedMixin):  # DNM Serializer
                         if isinstance(value, (int, str, bool, float)):
@@ -119,8 +119,8 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                     pass
 
     def DNM_ids_validator(self, attr, value):
-        if self.Meta.DNM_config[attr]["filter"] is not None:
-            filter_field = self.Meta.DNM_config[attr]["filter"]
+        if self.Meta.DNM_config[attr]["filter"][0] is not None:
+            filter_field = self.Meta.DNM_config[attr]["filter"][0]
             model_serializer = self.Meta.DNM_config[attr]["serializer"]
             model = model_serializer.Meta.model
             res = None
@@ -153,8 +153,8 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         return res
 
     def DNM_data_with_ids_validator(self, attr, value):
-        if self.Meta.DNM_config[attr]["filter"] is not None:
-            filter_field = self.Meta.DNM_config[attr]["filter"]
+        if self.Meta.DNM_config[attr]["filter"][0] is not None:
+            filter_field = self.Meta.DNM_config[attr]["filter"][0]
             can_edit_ins = self.Meta.DNM_config[attr]["can_be_edited"]
             model_serializer = self.Meta.DNM_config[attr]["serializer"]
             model = model_serializer.Meta.model
@@ -433,7 +433,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                     field.remove(i)
 
             # set new data.
-            filter_field = config['filter']
+            filter_field = config['filter'][0]
             for data in value:
                 if filter_field in data:  # if filter was in the data then we will search for old data.
                     filtered_data = field.model.objects.filter(**{filter_field: data[filter_field]})
@@ -472,7 +472,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                     field.remove(i)
 
             # set new data.
-            filter_field = config['filter']
+            filter_field = config['filter'][0]
             for data in value:
                 if filter_field not in data:
                     if not config['create_new_instance']:
@@ -505,7 +505,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                 raise Exception(f'can not update attribute: "{attr}" when can_be_edited is set to False')
 
             # set new data.
-            filter_field = config['filter']
+            filter_field = config['filter'][0]
             if filter_field in value:  # if filter was in the data then we will search for old data.
                 field_model = info.relations[attr].related_model if attr in info.relations else None
                 filtered_data = field_model.objects.filter(**{filter_field: value[filter_field]})
@@ -536,7 +536,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
             config = self.Meta.DNM_config[attr] if "DNM_config" in self.Meta.__dict__ else {}
 
             # set new data.
-            filter_field = config['filter']
+            filter_field = config['filter'][0]
             if filter_field not in value:
                 if not config['create_new_instance']:
                     raise Exception(f'can not create attribute: "{attr}" when create_new_instance is set to False')

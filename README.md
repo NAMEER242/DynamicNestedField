@@ -118,7 +118,7 @@ DNM_config = {
                 "create_new_instance": True,  # if you want to perform create operation on this field.
                 "can_be_edited": True,  # if you want to perform update operation on this field.
                 "clear_data": False,  # if you want to clear field data before updating it (like if it was m2m relation, and you want to clear the data every time you update using this serializer).
-                "filter": None,  # the filter field used to get old data of this field from the database (this attribute must be defined). 
+                "filter": [None],  # the filter field used to get old data of this field from the database, if the first filter was not found then it will check for the secondary if exists (this attribute must be defined). 
                 "serializer": None  # you can set a serializer for this field the library will search for it by itself.
             }
         }
