@@ -208,7 +208,20 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         model_serializer = self.Meta.DNM_config[attr]["serializer"]
         model = model_serializer.Meta.model
         res = None
-        if model_serializer is not None:
+        if model_serializer is not None:  # if the secondary filter is exists.
+            filters = self.Meta.DNM_config[attr]["filter"]
+            if len(filters) >= 1 and filters[1] is not None and filters[1] in value:
+                filter_field = self.Meta.DNM_config[attr]["filter"][1]
+                model_filter = model.objects.filter(**{filter_field: value[filter_field]})
+                if model_filter.exists():
+                    model_filter = model_filter[0]
+                    ser = model_serializer(model_filter, data=value, partial=self.partial)
+                    ser.context["request"] = self.context['request'] if 'request' in self.context else None
+                    if ser.is_valid():
+                        ser.validated_data["id"] = model_filter.id
+                        res = ser.validated_data
+                        return ser
+
             ser = model_serializer(data=value, partial=self.partial)
             ser.context["request"] = self.context['request'] if 'request' in self.context else None
             if ser.is_valid():
@@ -263,7 +276,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         """
         set new value to read_only property for field and its nexted fields.
         """
-        if hasattr(field, "read_only") and not(type(field).__name__ == "ReadOnlyField"):
+        if hasattr(field, "read_only") and not (type(field).__name__ == "ReadOnlyField"):
             field.read_only = False
         if hasattr(field, "fields"):
             for f in field.fields.values():
