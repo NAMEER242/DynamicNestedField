@@ -124,6 +124,12 @@ DNM_config = {
         }
 ```
 
+In this configuration dict the only required attribute is filter, it is a list of str names for serializer fields that we will use to find old model data, you can use up to 2 filters inside the filter attr the first every one of them has some special logics...
+let `filter=['id', 'name']`
+* in the first filter `id` we will search for an item with `id=filter['id']` if we found one we use it else we raise an exception.
+* but in the second filter `name` we will search for an item with `name=filter['name']` if we found one we use it else we create a new item with `name=filter['name']`.
+* if there was a third filter then we wil skip it in this library version.
+
 Here the filter attribute is the only required attribute the rest of them can be removed, and the library will set its default values.
 
 ### views:
