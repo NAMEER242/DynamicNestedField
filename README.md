@@ -14,6 +14,8 @@ $ pip install DynamicNestedField
 
 Working with this library is semilunar to using normal serializers, we will create simple project that contains several models with m2m and foreignkey relations...
 
+***👉 You can find a simple example project [on GitHub](https://github.com/NAMEER242/DynamicNestedField_Showcase).***
+
 * model: `A`
   * ManyToMany: model: `B`
     * ForeignKey: model: `C`
