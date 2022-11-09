@@ -128,7 +128,8 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                 model_filter = None
                 model_filter = model.objects.filter(**{filter_field: value})
                 if model_filter is not None and model_filter.exists():
-                    ser = model_serializer(model_filter[0])
+                    model_filter = model_filter[0]
+                    ser = model_serializer(model_filter)
                     res = ser.data
                 else:
                     raise Exception(f'no {filter_field} with value of "{value}" for attribute: {attr}')
@@ -145,7 +146,8 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         res = None
         model_filter = model.objects.filter(**{"id": value})
         if model_filter is not None and model_filter.exists():
-            ser = model_serializer(model_filter[0])
+            model_filter = model_filter[0]
+            ser = model_serializer(model_filter)
             res = ser.data
         else:
             raise Exception(f"no 'id' with value of ({value}) for attribute: {attr}")
@@ -163,7 +165,9 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                 if filter_field in value:
                     model_filter = model.objects.filter(**{filter_field: value[filter_field]})
                     if model_filter.exists():
-                        ser = model_serializer(model_filter[0], data=value, partial=self.partial)
+                        model_filter = model_filter[0]
+                        value["id"] = model_filter.id
+                        ser = model_serializer(model_filter, data=value, partial=self.partial)
                         ser.context["request"] = self.context['request'] if 'request' in self.context else None
                         if ser.is_valid():
                             if isinstance(ser, DynamicNestedMixin):
@@ -192,7 +196,9 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         if "id" in value.keys():
             model_filter = model.objects.filter(**{"id": value["id"]})
             if model_filter is not None and model_filter.exists():
-                ser = model_serializer(model_filter[0], data=value, partial=self.partial)
+                model_filter = model_filter[0]
+                value["id"] = model_filter.id
+                ser = model_serializer(model_filter, data=value, partial=self.partial)
                 ser.context["request"] = self.context['request'] if 'request' in self.context else None
                 if ser.is_valid():
                     ser.validated_data["id"] = value["id"]
@@ -215,12 +221,13 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                 model_filter = model.objects.filter(**{filter_field: value[filter_field]})
                 if model_filter.exists():
                     model_filter = model_filter[0]
+                    value["id"] = model_filter.id
                     ser = model_serializer(model_filter, data=value, partial=self.partial)
                     ser.context["request"] = self.context['request'] if 'request' in self.context else None
                     if ser.is_valid():
                         ser.validated_data["id"] = model_filter.id
                         res = ser.validated_data
-                        return ser
+                        return res
 
             ser = model_serializer(data=value, partial=self.partial)
             ser.context["request"] = self.context['request'] if 'request' in self.context else None
@@ -329,6 +336,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
             elif field.field_name == "id":
                 # removing read_only property from id fields.
                 field.read_only = False
+                field.required = False
                 yield field
 
     def to_internal_value(self, data):  # override
