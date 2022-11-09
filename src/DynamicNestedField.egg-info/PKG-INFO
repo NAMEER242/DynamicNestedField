@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: DynamicNestedField
-Version: 0.0.1
+Version: 0.0.2
 Summary: DynamicNestedField is a set of tools used to perform dynamic nested operation on django models.
 Home-page: https://github.com/NAMEER242/DynamicNestedField
 Author: Nameer Haider
@@ -31,6 +31,8 @@ $ pip install DynamicNestedField
 ## Usage & Example
 
 Working with this library is semilunar to using normal serializers, we will create simple project that contains several models with m2m and foreignkey relations...
+
+***👉 You can find a simple example project [on GitHub](https://github.com/NAMEER242/DynamicNestedField_Showcase).***
 
 * model: `A`
   * ManyToMany: model: `B`
@@ -134,7 +136,7 @@ DNM_config = {
                 "create_new_instance": True,  # if you want to perform create operation on this field.
                 "can_be_edited": True,  # if you want to perform update operation on this field.
                 "clear_data": False,  # if you want to clear field data before updating it (like if it was m2m relation, and you want to clear the data every time you update using this serializer).
-                "filter": None,  # the filter field used to get old data of this field from the database (this attribute must be defined). 
+                "filter": [None],  # the filter field used to get old data of this field from the database, if the first filter was not found then it will check for the secondary if exists (this attribute must be defined). 
                 "serializer": None  # you can set a serializer for this field the library will search for it by itself.
             }
         }
