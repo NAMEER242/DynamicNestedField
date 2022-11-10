@@ -171,10 +171,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                         ser.context["request"] = self.context['request'] if 'request' in self.context else None
                         if ser.is_valid():
                             if isinstance(ser, DynamicNestedMixin):
-                                if can_edit_ins:
-                                    res = ser.validated_data
-                                else:
-                                    raise Exception(f'can not update attribute: {attr}')
+                                res = ser.validated_data
                             else:
                                 raise Exception(f"attribute {attr} is not an instance of DynamicNestedMixin class")
                     else:
