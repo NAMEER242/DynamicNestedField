@@ -216,7 +216,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         res = None
         if model_serializer is not None:  # if the secondary filter is exists.
             filters = self.Meta.DNM_config[attr]["filter"]
-            if len(filters) >= 1 and filters[1] is not None and filters[1] in value:
+            if len(filters) >= 2 and filters[1] is not None and filters[1] in value:
                 filter_field = self.Meta.DNM_config[attr]["filter"][1]
                 model_filter = model.objects.filter(**{filter_field: value[filter_field]})
                 if model_filter.exists():
