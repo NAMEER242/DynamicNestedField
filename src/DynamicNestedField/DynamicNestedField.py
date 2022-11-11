@@ -222,8 +222,8 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                     ser = model_serializer(model_filter, data=value, partial=self.partial)
                     ser.context["request"] = self.context['request'] if 'request' in self.context else None
                     if ser.is_valid():
-                        ser.validated_data["id"] = model_filter.id
-                        res = ser.validated_data
+                        ser.data["id"] = model_filter.id
+                        res = ser.data
                         return res
 
             ser = model_serializer(data=value, partial=self.partial)
