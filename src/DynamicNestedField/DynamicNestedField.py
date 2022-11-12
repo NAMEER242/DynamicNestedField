@@ -579,10 +579,11 @@ class DynamicNestedMixin(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         self.check_permissions()  # permission check.
         instance = self.instance_validation(instance)  # instance validation.
-        info = model_meta.get_field_info(instance)  # information about model data.
 
         if instance is None:
             raise Exception(f'model instance validation failed for model: {type(instance)}')
+
+        info = model_meta.get_field_info(instance)  # information about model data.
 
         m2m_fields = []
         foreign_key_fields = []
