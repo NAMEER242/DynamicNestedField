@@ -38,10 +38,10 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         DNM_config = {
             "field": {
                 "create_new_instance": True,  # default: True
-                "can_be_edited": True,  # default: True
-                "clear_data": False,  # default: False
-                "filter": [None],  # default: None
-                "serializer": None  # default: None
+                "can_be_edited": True,        # default: True
+                "clear_data": False,          # default: False
+                "filter": [None],             # default: None
+                "serializer": None            # default: None
             }
         }
 
@@ -60,8 +60,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         info = model_meta.get_field_info(self.Meta.model)
         temp_initial_data = [i for i in self.initial_data.items()]
         for attr, value in temp_initial_data:
-            # if value == []:
-            #     continue
             if attr in self.Meta.DNM_config:
                 config = self.Meta.DNM_config[attr]
                 # attribute is Many2Many:
@@ -125,7 +123,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
             model = model_serializer.Meta.model
             res = None
             if model_serializer is not None:
-                model_filter = None
                 model_filter = model.objects.filter(**{filter_field: value})
                 if model_filter is not None and model_filter.exists():
                     model_filter = model_filter[0]
@@ -157,7 +154,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
     def DNM_data_with_ids_validator(self, attr, value):
         if self.Meta.DNM_config[attr]["filter"][0] is not None:
             filter_field = self.Meta.DNM_config[attr]["filter"][0]
-            can_edit_ins = self.Meta.DNM_config[attr]["can_be_edited"]
             model_serializer = self.Meta.DNM_config[attr]["serializer"]
             model = model_serializer.Meta.model
             res = None
@@ -466,7 +462,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
                             f"no filtered_field equal to ({filter_field}={data[filter_field]}) for attribute: {attr}"
                         )
                 else:
-                    # raise Exception(f'no filtered_field declared in the request for attribute: {attr}')
                     if not config['create_new_instance']:
                         raise Exception(
                             f'can not create attribute: "{attr}" when create_new_instance is set to False')
@@ -516,7 +511,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
 
     def update_and_set_foreign_key(self, instance, fields, info):
         for attr, value in fields:
-            field = getattr(instance, attr)  # the field or the attribute that we will update with new data.
             config = self.Meta.DNM_config[attr] if "DNM_config" in self.Meta.__dict__ else {}
 
             if not config['can_be_edited']:
@@ -550,7 +544,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
 
     def create_and_set_foreign_key(self, instance, fields, info):
         for attr, value in fields:
-            field = getattr(instance, attr)  # the field or the attribute that we will update with new data.
             config = self.Meta.DNM_config[attr] if "DNM_config" in self.Meta.__dict__ else {}
 
             # set new data.
@@ -584,8 +577,12 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         pass
 
     def update(self, instance, validated_data):
-        self.check_permissions()
+        self.check_permissions()  # permission check.
+        instance = self.instance_validation(instance)  # instance validation.
         info = model_meta.get_field_info(instance)  # information about model data.
+
+        if instance is None:
+            raise Exception(f'model instance validation failed for model: {type(instance)}')
 
         m2m_fields = []
         foreign_key_fields = []
@@ -606,7 +603,7 @@ class DynamicNestedMixin(serializers.ModelSerializer):
 
         instance.save()
 
-        return self.instance_validation(instance)
+        return instance
 
     def create(self, validated_data):
         self.check_permissions()
@@ -615,7 +612,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         m2m_fields = []
         foreign_key_fields = []
         custom_fields = []
-        instance = None
         # loop data to separate m2m, foreign key and custom fields.
         for attr, value in [i for i in validated_data.items()]:
             if attr in info.relations and info.relations[attr].to_many:  # m2m fields.
@@ -632,13 +628,20 @@ class DynamicNestedMixin(serializers.ModelSerializer):
 
         instance = self.Meta.model.objects.create(**validated_data)  # create the main instance.
 
+        ins = self.instance_validation(instance)  # instance validation.
+        if ins is None:
+            instance.delete()
+            raise Exception(f'model instance validation failed for model: {type(instance)}')
+        else:
+            instance = ins
+
         if instance is not None:
             self.create_and_set_m2m(instance, m2m_fields, info)
             self.create_and_set_foreign_key(instance, foreign_key_fields, info)
             self.create_and_set_custom_fields(instance, custom_fields, info)
             instance.save()
 
-        return self.instance_validation(instance)
+        return instance
 
     def check_permissions(self):
         """
