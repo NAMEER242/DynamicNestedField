@@ -738,5 +738,15 @@ class NestedModelViewSet(viewsets.ModelViewSet):
 
 
 class BaseInstanceValidator:
+    """
+    Instance validator is used to validate any model instance the user
+    may create, update or get, you can validate the user permissions for
+    the model of this instance or validate and chane instance data.
+
+    We will check for the validation in three cases:
+        -before fetching instance data ('get')
+        -before updating instance data ('update')
+        -after crating an instance ('create'), here if the validation return None we will delete this instance.
+    """
     def validate(self, instance, request):
         pass
