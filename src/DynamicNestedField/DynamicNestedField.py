@@ -1,10 +1,11 @@
 import threading
 from collections import OrderedDict
 from collections.abc import Mapping
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import models
 from rest_framework import serializers, viewsets
 from rest_framework.fields import get_error_detail, set_value
 from rest_framework.fields import SkipField
-from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError
 from rest_framework.relations import PKOnlyObject
 from rest_framework.serializers import ListSerializer, BaseSerializer
@@ -14,6 +15,27 @@ from rest_framework.validators import UniqueValidator
 from rest_framework.fields import empty
 
 _requests = {}
+
+
+class DynamicNestedListSerializer(serializers.ListSerializer):
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
+
+    def to_representation(self, data):
+        """
+        List of object instances -> List of dicts of primitive datatypes.
+        """
+        # Dealing with nested relationships, data can be a Manager,
+        # so, first get a queryset from the Manager if needed
+        iterable = data.all() if isinstance(data, models.Manager) else data
+
+        res = []
+        for item in iterable:
+            value = self.child.to_representation(item)
+            if value:
+                res.append(value)
+
+        return res
 
 
 class DynamicNestedMixin(serializers.ModelSerializer):
@@ -28,11 +50,15 @@ class DynamicNestedMixin(serializers.ModelSerializer):
         instance_validator = []
 
     def __init__(self, instance=None, data=empty, request=None, **kwargs):
+        # check if 'list_serializer_class' was declared in Meta class if not set our default list serializer.
+        if "list_serializer_class" not in self.Meta.__dict__:
+            self.Meta.list_serializer_class = DynamicNestedListSerializer
         super().__init__(instance, data, **kwargs)
         if request:
             self.context['request'] = request
         # if instance is not None:
         #     self.instance_validation(instance)
+
 
     def is_valid(self, raise_exception=False):
         DNM_config = {
