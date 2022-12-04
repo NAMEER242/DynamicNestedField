@@ -2,6 +2,8 @@
 
 `DynamicNestedField` is a set of tools used to perform dynamic nested operation on django models without worrying about the problems and authentication leaks that come with it.
 
+This library has support for `django-restql` and `django-filter` with predefined filters for main django model fields.
+
 ## Installation
 
 Install using `pip`...
