@@ -751,7 +751,7 @@ class GenericFilterSet:
 
     def get_field_filters(self, field):
         # get field filter from our filters dict.
-        return filtered_fields[field.__class__.__name__]
+        return filtered_fields.get(field.__class__.__name__, [])
 
     def get_normal_meta_fields(self):
         # get models non relational fields.
