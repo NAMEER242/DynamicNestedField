@@ -2,6 +2,7 @@ LICENSE.txt
 README.md
 pyproject.toml
 setup.cfg
+src/DynamicNestedField/DjangoModelsFields.py
 src/DynamicNestedField/DynamicNestedField.py
 src/DynamicNestedField/__init__.py
 src/DynamicNestedField.egg-info/PKG-INFO
