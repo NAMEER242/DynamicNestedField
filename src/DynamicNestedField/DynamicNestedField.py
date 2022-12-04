@@ -1,8 +1,12 @@
+import warnings
+import django_filters
 import threading
 from collections import OrderedDict
 from collections.abc import Mapping
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models
+from django_restql.mixins import DynamicFieldsMixin, QueryArgumentsMixin
+from django_filters import compat
 from rest_framework import serializers, viewsets
 from rest_framework.fields import get_error_detail, set_value
 from rest_framework.fields import SkipField
@@ -13,6 +17,8 @@ from rest_framework.settings import api_settings
 from rest_framework.utils import model_meta
 from rest_framework.validators import UniqueValidator
 from rest_framework.fields import empty
+from .DjangoModelsFields import fields as filtered_fields
+
 
 _requests = {}
 
@@ -38,7 +44,7 @@ class DynamicNestedListSerializer(serializers.ListSerializer):
         return res
 
 
-class DynamicNestedMixin(serializers.ModelSerializer):
+class DynamicNestedMixin(DynamicFieldsMixin, serializers.ModelSerializer):
     class Meta:
         model = None
         fields = []
@@ -58,7 +64,6 @@ class DynamicNestedMixin(serializers.ModelSerializer):
             self.context['request'] = request
         # if instance is not None:
         #     self.instance_validation(instance)
-
 
     def is_valid(self, raise_exception=False):
         DNM_config = {
@@ -311,6 +316,12 @@ class DynamicNestedMixin(serializers.ModelSerializer):
             self.set_field_read_only(field.child, value)
 
     def to_representation(self, instance):  # override
+        # Activate using restql fields
+        self.is_ready_to_use_dynamic_fields = True
+
+        if self.dynamic_fields_mixin_kwargs["return_pk"]:
+            return instance.pk
+
         ins = self.instance_validation(instance)
         if ins:
             return self.get_representation(ins)
@@ -395,6 +406,20 @@ class DynamicNestedMixin(serializers.ModelSerializer):
             raise ValidationError(errors)
 
         return ret
+
+    def get_parsed_restql_query(self):  # override.
+        request = self.get_request()
+
+        if self.dynamic_fields_mixin_kwargs["query"] is not None:
+            # Get from query kwarg
+            return self.get_parsed_restql_query_from_query_kwarg()
+        elif self.dynamic_fields_mixin_kwargs["parsed_query"] is not None:
+            # Get from parsed_query kwarg
+            return self.dynamic_fields_mixin_kwargs["parsed_query"]
+        elif request is not None and self.has_restql_query_param(request):
+            # Get from request query parameter
+            return self.get_parsed_restql_query_from_req(request)
+        return None  # There is no query, so we return None as a parsed query
 
     def get_request(self):
         context = getattr(self, "context", None)
@@ -708,7 +733,126 @@ class GlobalRequestMiddleware(object):
         raise exception
 
 
-class NestedModelViewSet(viewsets.ModelViewSet):
+class GenericFilterSet:
+    """
+    This class used to create a generic filter set for all django
+    models fields, the set contains the main filters for each field.
+
+    Nested models are supported in this class.
+    """
+    def __init__(self, model, enable_filter_schema=False, model_rel_field_name=""):
+        self.model = model
+        self.model_rel_field_name = f"{model_rel_field_name}__" if model_rel_field_name else ""
+        self.fields = None
+        self.info = model_meta.get_field_info(self.model)
+        self.enable_filter_schema = enable_filter_schema
+        # create new FilterSet.
+        self.FilterSet = self.create_filter_set()
+
+    def get_field_filters(self, field):
+        # get field filter from our filters dict.
+        return filtered_fields[field.__class__.__name__]
+
+    def get_normal_meta_fields(self):
+        # get models non relational fields.
+        return {
+            f"{self.model_rel_field_name}{k}": self.get_field_filters(v)
+            for k, v in self.info.fields_and_pk.items() if k != "pk"
+        }
+
+    def get_meta_relational_fields(self):
+        # get models relational fields.
+        res = {}
+        for k, v in self.info.forward_relations.items():
+            res = {
+                **res,
+                **{
+                    f"{self.model_rel_field_name}{k}": v
+                    for k, v in GenericFilterSet(v.related_model, model_rel_field_name=k).FilterSet.items()
+                }
+            }
+        return res
+
+    def create_filter_set(self):
+
+        normal_fields = self.get_normal_meta_fields()
+        normal_fields = normal_fields if normal_fields else {}
+        relational_fields = self.get_meta_relational_fields()
+        relational_fields = relational_fields if relational_fields else {}
+        self.fields = {**normal_fields, **relational_fields}
+
+        # return fields if this instance was nested.
+        if self.model_rel_field_name:
+            return self.fields
+
+        class GenericFilterClass(django_filters.rest_framework.FilterSet):
+            class Meta:
+                model = self.model
+                fields = self.fields
+                enable_filter_schema = self.enable_filter_schema
+
+        return GenericFilterClass
+
+
+class CustomDjangoFilterBackend(django_filters.rest_framework.DjangoFilterBackend):
+    """
+    A Custom filter backend for django filers edited to
+    allow hiding filterset class query parameters from swagger.
+
+    you can set (enable_filter_schema = True) to show parameters or false to hide them,
+    this var is used inside your (NestedModelViewSet) and not compatible with other views or viewsets.
+    """
+    def get_schema_fields(self, view):
+        # This is not compatible with widgets where the query param differs from the
+        # filter's attribute name. Notably, this includes `MultiWidget`, where query
+        # params will be of the format `<name>_0`, `<name>_1`, etc...
+        assert (
+                compat.coreapi is not None
+        ), "coreapi must be installed to use `get_schema_fields()`"
+        assert (
+                compat.coreschema is not None
+        ), "coreschema must be installed to use `get_schema_fields()`"
+
+        try:
+            queryset = view.get_queryset()
+        except Exception:
+            queryset = None
+            warnings.warn(
+                "{} is not compatible with schema generation".format(view.__class__)
+            )
+
+        filterset_class = self.get_filterset_class(view, queryset)
+
+        if filterset_class.Meta.enable_filter_schema:
+            return (
+                []
+                if not filterset_class
+                else [
+                    compat.coreapi.Field(
+                        name=field_name,
+                        required=field.extra["required"],
+                        location="query",
+                        schema=self.get_coreschema_field(field),
+                    )
+                    for field_name, field in filterset_class.base_filters.items()
+                ]
+            )
+        else:
+            return []
+
+
+class NestedModelViewSet(QueryArgumentsMixin, viewsets.ModelViewSet):
+    """
+    Custom ModelViewSet class that support django rest_framework filters
+    and has support for fetching permissions from DynamicNestedMixin Serializers.
+    """
+    filter_backends = (CustomDjangoFilterBackend,)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        enable_filter_schema = getattr(self, "enable_filter_schema", False)  # showing filters in swagger or not.
+        self.filterset_class = GenericFilterSet(self.queryset.model, enable_filter_schema).FilterSet
+
     def get_permissions(self):
         """
         Instantiates and returns the list of permissions that this view requires.
@@ -739,14 +883,19 @@ class NestedModelViewSet(viewsets.ModelViewSet):
 
 class BaseInstanceValidator:
     """
-    Instance validator is used to validate any model instance the user
-    may create, update or get, you can validate the user permissions for
-    the model of this instance or validate and chane instance data.
-
-    We will check for the validation in three cases:
-        -before fetching instance data ('get')
-        -before updating instance data ('update')
-        -after crating an instance ('create'), here if the validation return None we will delete this instance.
+    Instance Validators used to validate models instances in three cases:
+    - before listing or retrieving serializer data (as in GET request).
+    - before updating serializer model data with the update() method (as in PUT, Patch request).
+    - before Create serializer model data with the create() method (as in POST request).
     """
     def validate(self, instance, request):
+        """
+        validate function used to write validating logic for a specific instance and returning an
+        instance that will be used as the validated instance, if the instance is not validated this
+        function should return None
+
+        :param instance: the instance to be validated
+        :param request: the request used to perform an action on this instance
+        :return: a validated instance or None value for non-validated instances
+        """
         pass
