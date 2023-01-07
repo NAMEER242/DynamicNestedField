@@ -7,7 +7,7 @@ fields = {
     "BooleanField": ['exact'],
     "CharField": ['exact', 'contains', 'icontains', 'endswith', 'iendswith', 'regex', 'iregex', 'startswith', 'istartswith'],
     "CommaSeparatedIntegerField": ['exact'],
-    "DateField": ['exact', 'date', 'day', 'month', 'quarter', 'week', 'week_day', 'year'],
+    "DateField": ['exact', 'day', 'month', 'quarter', 'week', 'week_day', 'year'],
     "DateTimeField": ['exact', 'date', 'day', 'month', 'quarter', 'week', 'week_day', 'year', 'hour', 'minute', 'second', 'time'],
     "DecimalField": ['exact', 'lt', 'lte', 'gt', 'gte'],
     "DurationField": ['exact'],
