@@ -851,7 +851,10 @@ class NestedModelViewSet(QueryArgumentsMixin, viewsets.ModelViewSet):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         enable_filter_schema = getattr(self, "enable_filter_schema", False)  # showing filters in swagger or not.
-        self.filterset_class = GenericFilterSet(self.queryset.model, enable_filter_schema).FilterSet
+        if self.queryset:
+            self.filterset_class = GenericFilterSet(self.queryset.model, enable_filter_schema).FilterSet
+        else:
+            self.filterset_class = None
 
     def get_permissions(self):
         """
