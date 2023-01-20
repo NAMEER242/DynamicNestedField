@@ -309,6 +309,8 @@ class DynamicNestedMixin(DynamicFieldsMixin, serializers.ModelSerializer):
         """
         if hasattr(field, "read_only") and not (type(field).__name__ == "ReadOnlyField"):
             field.read_only = False
+            if getattr(field, "required", False):
+                field.required = False
         if hasattr(field, "fields"):
             for f in field.fields.values():
                 self.set_field_read_only(f, value)
