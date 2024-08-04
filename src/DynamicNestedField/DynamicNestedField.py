@@ -672,7 +672,7 @@ class DynamicNestedMixin(DynamicFieldsMixin, serializers.ModelSerializer):
             if attr in info.relations and info.relations[attr].to_many:  # m2m fields.
                 m2m_fields.append((attr, value))
                 validated_data.pop(attr)
-            elif attr in info.relations and info.relations[attr].to_field is not None:  # foreign key fields.
+            elif attr in info.relations:  # foreign key fields.
                 foreign_key_fields.append((attr, value))
                 validated_data.pop(attr)
             elif attr in info.fields:  # normal fields.
