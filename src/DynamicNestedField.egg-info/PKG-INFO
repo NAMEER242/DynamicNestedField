@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: DynamicNestedField
-Version: 0.0.14
+Version: 0.0.15
 Summary: DynamicNestedField is a set of tools used to perform dynamic nested operation on django models.
 Home-page: https://github.com/NAMEER242/DynamicNestedField
 Author: Nameer Haider
@@ -15,6 +15,15 @@ Classifier: Framework :: Django
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
+Requires-Dist: setuptools>=42
+Requires-Dist: asgiref>=3.5.2
+Requires-Dist: Django>=4.1.3
+Requires-Dist: djangorestframework>=3.14.0
+Requires-Dist: pytz>=2022.6
+Requires-Dist: sqlparse>=0.4.3
+Requires-Dist: tzdata>=2022.6
+Requires-Dist: django-restql==0.15.3
+Requires-Dist: django-filter==22.1
 
 # DynamicNestedField
 
